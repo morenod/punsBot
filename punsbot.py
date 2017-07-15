@@ -7,7 +7,9 @@ if 'TOKEN' not in os.environ:
 
 bot = telebot.TeleBot(os.environ['TOKEN'])
 
-
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
 	bot.reply_to(message, "Howdy, how are you doing?")
+    
+print("Ready for trolling!")
+bot.polling()
