@@ -28,8 +28,8 @@ def findPun(message="",dbfile='puns.db'):
     answer = ""
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    for i in message.split(" "):
-        answer = cursor.execute('''SELECT pun from puns where trigger = ?''', (i,)).fetchone()
+    for i in message.text.split(" "):
+        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND chatid = ?''', (i, message.chat.id)).fetchone()
         db.commit()
     db.close()
     return answer
@@ -62,17 +62,18 @@ def add(message):
     db.commit()
     db.close()
     triggers = db_load_triggers(punsdb)
-    print triggers
 
-@bot.message_handler(commands=['punslist'])
+@bot.message_handler(commands=['list', 'punslist'])
 def list(message):
+    list = "|| uuid || trigger || pun ||\n"
     global punsdb
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT * from puns''').fetchall()
-    print answer
+    answer = cursor.execute('''SELECT * from puns WHERE chatid = ?''', (message.chat.id,)).fetchall()
     db.commit()
-    bot.reply_to(message, answer)
+    for i in answer:
+        list += "|| "+ str(i[0]) + " || " + str(i[2]) + " || " + str(i[3]) + " ||\n"
+    bot.reply_to(message, list)
     db.close()
     return
 
@@ -82,7 +83,7 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
-    rima = findPun(message=message.text,dbfile=punsdb)
+    rima = findPun(message=message,dbfile=punsdb)
     if rima != None:
         bot.reply_to(message, rima)
 
