@@ -57,11 +57,17 @@ def add(message):
     pun = quote.split('|')[1]
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()),  message.chat.id, trigger, pun))
-    bot.reply_to(message, 'Pun added to your channel')
+    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ?''', (trigger,))
     db.commit()
+    if answer != 0:
+        bot.reply_to(message, 'There is already a pun with \''+ trigger+ '\' as trigger')
+    else:
+        cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()),  message.chat.id, trigger, pun))
+        bot.reply_to(message, 'Pun added to your channel')
+        db.commit()
+        triggers = db_load_triggers(punsdb)
     db.close()
-    triggers = db_load_triggers(punsdb)
+    return
 
 @bot.message_handler(commands=['list', 'punslist'])
 def list(message):
