@@ -51,19 +51,42 @@ def add(message):
     global punsdb
     quote = message.text.replace('/punadd ', '')
     if quote == '' or  len(quote.split('|')) != 2:
-        bot.reply_to(message, 'Missing pun or invalid sytanx: \"/punadd \"pun trigger\"|\"pun\"')
+        bot.reply_to(message, 'Missing pun or invalid syntax: \"/punadd \"pun trigger\"|\"pun\"')
         return
     trigger = quote.split('|')[0]
     pun = quote.split('|')[1]
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ?''', (trigger,))
+    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ?''', (trigger,)).fetchone()
     db.commit()
-    if answer != 0:
+    if answer[0] != 0:
         bot.reply_to(message, 'There is already a pun with \''+ trigger+ '\' as trigger')
     else:
         cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()),  message.chat.id, trigger, pun))
         bot.reply_to(message, 'Pun added to your channel')
+        db.commit()
+        triggers = db_load_triggers(punsdb)
+    db.close()
+    return
+
+@bot.message_handler(commands=['pundel'])
+def delete(message):
+    global triggers
+    global punsdb
+    quote = message.text.replace('/pundel ', '')
+    if quote == '':
+#todo: add uuid validator
+        bot.reply_to(message, 'Missing pun uuid to remove or invalid syntax: \"/pundel \"pun uuid\"')
+        return
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT count(uuid) FROM puns WHERE uuid = ?''', (quote,)).fetchone()
+    db.commit()
+    if answer[0] != 1:
+        bot.reply_to(message, 'UUID '+quote+' not found')
+    else:
+        cursor.execute('''DELETE FROM puns WHERE chatid = ? and uuid = ?''', (message.chat.id, quote))
+        bot.reply_to(message, 'Pun deleted from your channel')
         db.commit()
         triggers = db_load_triggers(punsdb)
     db.close()
