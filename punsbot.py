@@ -25,6 +25,8 @@ def db_load_triggers(dbfile='puns.db'):
     return answer
 
 def findPun(message="",dbfile='puns.db'):
+    if 'transcoding' in message.text.lower():
+        return 'chupito!'
     answer = ""
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
