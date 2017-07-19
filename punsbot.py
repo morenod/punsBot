@@ -2,6 +2,7 @@ import telebot
 import os
 import sqlite3
 import uuid
+import sys
 sys.setdefaultencoding('utf-8')
 
 if 'TOKEN' not in os.environ:
@@ -29,8 +30,10 @@ def findPun(message="",dbfile='puns.db'):
     answer = ""
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    for i in message.text.split(" "):
+    clean_text = message.text.translate(None, string.punctuation).lower()
+    for i in clean_text.split(" "):
         answer = cursor.execute('''SELECT pun from puns where trigger = ? AND chatid = ?''', (i, message.chat.id)).fetchone()
+        print "Trigger: %s, chatid: %s, answer: %s" %(i, message.chat.id, answer)
         db.commit()
     db.close()
     return answer
