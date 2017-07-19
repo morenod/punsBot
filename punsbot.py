@@ -2,6 +2,8 @@ import telebot
 import os
 import sqlite3
 import uuid
+import sys
+reload(sys)
 sys.setdefaultencoding('utf-8')
 
 if 'TOKEN' not in os.environ:
