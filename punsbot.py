@@ -2,6 +2,7 @@ import telebot
 import os
 import sqlite3
 import uuid
+sys.setdefaultencoding('utf-8')
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -57,7 +58,7 @@ def add(message):
     pun = quote.split('|')[1]
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ?''', (trigger,)).fetchone()
+    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid =?''', (trigger,message.chat.id,)).fetchone()
     db.commit()
     if answer[0] != 0:
         bot.reply_to(message, 'There is already a pun with \''+ trigger+ '\' as trigger')
@@ -116,7 +117,7 @@ def echo_all(message):
     if rima != None:
         bot.reply_to(message, rima)
 
-punsdb = os.path.expanduser("~/punsdb.db")
+punsdb = os.path.expanduser("/var/punsbot/punsdb.db")
 db_setup(dbfile=punsdb)
 triggers = db_load_triggers(dbfile=punsdb)
 print("Ready for puns!")
