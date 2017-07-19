@@ -2,9 +2,12 @@ import telebot
 import os
 import sqlite3
 import uuid
+import string
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+allowed_chars = string.ascii_letters
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -31,10 +34,9 @@ def findPun(message="",dbfile='puns.db'):
     answer = ""
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    clean_text = message.text.translate(None, string.punctuation).lower()
-    for i in clean_text.split(" "):
-        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND chatid = ?''', (i, message.chat.id)).fetchone()
-        print "Trigger: %s, chatid: %s, answer: %s" %(i, message.chat.id, answer)
+    for i in message.text.lower().split(" "):
+        clean_i = "".join(c for c in i if c in allowed_chars)
+        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND chatid = ?''', (clean_i, message.chat.id)).fetchone()
         db.commit()
     db.close()
     return answer
@@ -59,6 +61,10 @@ def add(message):
         bot.reply_to(message, 'Missing pun or invalid syntax: \"/punadd \"pun trigger\"|\"pun\"')
         return
     trigger = quote.split('|')[0]
+    for character in trigger:
+        if character not in allowed_chars:
+            bot.reply_to(message, 'Invalid character '+ character + ' in trigger, only letters and numbers are allowed')
+            return
     pun = quote.split('|')[1]
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
