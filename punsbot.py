@@ -112,17 +112,17 @@ def delete(message):
 
 @bot.message_handler(commands=['list', 'punslist'])
 def list(message):
-    list = "|| uuid || trigger || pun ||\n"
+    list = "| uuid | trigger | pun\n"
     global punsdb
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT * from puns WHERE (chatid = ? OR chatid = 0)''', (message.chat.id,)).fetchall()
+    answer = cursor.execute('''SELECT * from puns WHERE (chatid = ? OR chatid = 0) ORDER BY chatid''', (message.chat.id,)).fetchall()
     db.commit()
     for i in answer:
         if str(i[1]) == '0':
-            list += "|| default pun || " + str(i[2]) + " || " + str(i[3]) + " ||\n"
+            list += "| default pun | " + str(i[2]) + " | " + str(i[3]) + "\n"
         else:
-            list += "|| "+ str(i[0]) + " || " + str(i[2]) + " || " + str(i[3]) + " ||\n"
+            list += "| "+ str(i[0]) + " | " + str(i[2]) + " | " + str(i[3]) + "\n"
     bot.reply_to(message, list)
     db.close()
     return
