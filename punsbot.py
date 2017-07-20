@@ -38,13 +38,11 @@ def db_load_triggers(dbfile='puns.db'):
     return answer
 
 def findPun(message="",dbfile='puns.db'):
-    answer = ""
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    for i in message.text.lower().split(" "):
-        clean_i = "".join(c for c in i if c in allowed_chars)
-        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (clean_i, message.chat.id)).fetchone()
-        db.commit()
+    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()[-1]
+    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last, message.chat.id)).fetchone()
+    db.commit()
     db.close()
     return answer
 
