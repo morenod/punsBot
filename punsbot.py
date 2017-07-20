@@ -29,14 +29,6 @@ def db_setup(dbfile='puns.db'):
                 db.commit()
     db.close()
 
-def db_load_triggers(dbfile='puns.db'):
-    db = sqlite3.connect(dbfile)
-    cursor = db.cursor()
-    answer = str(cursor.execute('SELECT trigger FROM puns').fetchall())
-    db.commit()
-    db.close()
-    return answer
-
 def findPun(message="",dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
@@ -81,7 +73,6 @@ def add(message):
         cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()),  message.chat.id, trigger, pun))
         bot.reply_to(message, 'Pun added to your channel')
         db.commit()
-        triggers = db_load_triggers(punsdb)
     db.close()
     return
 
@@ -104,7 +95,6 @@ def delete(message):
         cursor.execute('''DELETE FROM puns WHERE chatid = ? and uuid = ?''', (message.chat.id, quote))
         bot.reply_to(message, 'Pun deleted from your channel')
         db.commit()
-        triggers = db_load_triggers(punsdb)
     db.close()
     return
 
@@ -137,6 +127,5 @@ def echo_all(message):
 
 punsdb = os.path.expanduser("/var/punsbot/punsdb.db")
 db_setup(dbfile=punsdb)
-triggers = db_load_triggers(dbfile=punsdb)
 print("Ready for puns!")
 bot.polling(none_stop=True)
