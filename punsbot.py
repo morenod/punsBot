@@ -13,6 +13,10 @@ if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
     os._exit(1)
 
+if 'DBLOCATION' not in os.environ:
+    print("missing DB.Leaving...")
+    os._exit(1)
+
 bot = telebot.TeleBot(os.environ['TOKEN'])
 
 def db_setup(dbfile='puns.db'):
@@ -125,7 +129,7 @@ def echo_all(message):
     if rima != None:
         bot.reply_to(message, rima)
 
-punsdb = os.path.expanduser("/var/punsbot/punsdb.db")
+punsdb = os.path.expanduser(os.environ['DBLOCATION'])
 db_setup(dbfile=punsdb)
 print("Ready for puns!")
 bot.polling(none_stop=True)
