@@ -7,6 +7,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+version = 0.3
 allowed_chars = string.ascii_letters
 
 if 'TOKEN' not in os.environ:
@@ -131,5 +132,5 @@ def echo_all(message):
 
 punsdb = os.path.expanduser(os.environ['DBLOCATION'])
 db_setup(dbfile=punsdb)
-print("Ready for puns!")
+print "PunsBot %s ready for puns!" %(version)
 bot.polling(none_stop=True)
