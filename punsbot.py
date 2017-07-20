@@ -8,7 +8,7 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 
 version = "0.3.2"
-allowed_chars = string.ascii_letters
+allowed_chars = string.ascii_letters + " "
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
