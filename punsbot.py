@@ -37,11 +37,13 @@ def db_setup(dbfile='puns.db'):
 def findPun(message="",dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()[-1]
-    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last, message.chat.id)).fetchone()
-    db.commit()
-    db.close()
-    return answer
+#    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()[-1]
+    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()
+    if last != []:
+        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last[-1], message.chat.id)).fetchone()
+        db.commit()
+        db.close()
+        return answer
 
 @bot.message_handler(commands=['punshelp'])
 def help(message):
