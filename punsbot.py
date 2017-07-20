@@ -7,10 +7,15 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+version = 0.3
 allowed_chars = string.ascii_letters
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
+    os._exit(1)
+
+if 'DBLOCATION' not in os.environ:
+    print("missing DB.Leaving...")
     os._exit(1)
 
 bot = telebot.TeleBot(os.environ['TOKEN'])
@@ -19,25 +24,22 @@ def db_setup(dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
-    db.commit()
+    with open(os.path.expanduser('./defaultpuns.txt'), 'r') as staticpuns:
+        for line in staticpuns:
+            trigger = line.split('|')[0]
+            pun = line.split('|')[1]
+            answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
+            if answer[0] == 0:
+                cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
+                db.commit()
     db.close()
-
-def db_load_triggers(dbfile='puns.db'):
-    db = sqlite3.connect(dbfile)
-    cursor = db.cursor()
-    answer = str(cursor.execute('SELECT trigger FROM puns').fetchall())
-    db.commit()
-    db.close()
-    return answer
 
 def findPun(message="",dbfile='puns.db'):
-    answer = ""
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    for i in message.text.lower().split(" "):
-        clean_i = "".join(c for c in i if c in allowed_chars)
-        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND chatid = ?''', (clean_i, message.chat.id)).fetchone()
-        db.commit()
+    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()[-1]
+    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last, message.chat.id)).fetchone()
+    db.commit()
     db.close()
     return answer
 
@@ -68,15 +70,14 @@ def add(message):
     pun = quote.split('|')[1]
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid =?''', (trigger,message.chat.id,)).fetchone()
+    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid = ?''', (trigger,message.chat.id,)).fetchone()
     db.commit()
     if answer[0] != 0:
-        bot.reply_to(message, 'There is already a pun with \''+ trigger+ '\' as trigger')
+        bot.reply_to(message, 'There is already a pun with \''+ trigger+ '\' as trigger for this group')
     else:
         cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()),  message.chat.id, trigger, pun))
         bot.reply_to(message, 'Pun added to your channel')
         db.commit()
-        triggers = db_load_triggers(punsdb)
     db.close()
     return
 
@@ -91,7 +92,7 @@ def delete(message):
         return
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT count(uuid) FROM puns WHERE uuid = ?''', (quote,)).fetchone()
+    answer = cursor.execute('''SELECT count(uuid) FROM puns WHERE chatid = ? AND uuid = ?''', (message.chat.id, quote,)).fetchone()
     db.commit()
     if answer[0] != 1:
         bot.reply_to(message, 'UUID '+quote+' not found')
@@ -99,20 +100,22 @@ def delete(message):
         cursor.execute('''DELETE FROM puns WHERE chatid = ? and uuid = ?''', (message.chat.id, quote))
         bot.reply_to(message, 'Pun deleted from your channel')
         db.commit()
-        triggers = db_load_triggers(punsdb)
     db.close()
     return
 
 @bot.message_handler(commands=['list', 'punslist'])
 def list(message):
-    list = "|| uuid || trigger || pun ||\n"
+    list = "| uuid | trigger | pun\n"
     global punsdb
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT * from puns WHERE chatid = ?''', (message.chat.id,)).fetchall()
+    answer = cursor.execute('''SELECT * from puns WHERE (chatid = ? OR chatid = 0) ORDER BY chatid''', (message.chat.id,)).fetchall()
     db.commit()
     for i in answer:
-        list += "|| "+ str(i[0]) + " || " + str(i[2]) + " || " + str(i[3]) + " ||\n"
+        if str(i[1]) == '0':
+            list += "| default pun | " + str(i[2]) + " | " + str(i[3]) + "\n"
+        else:
+            list += "| "+ str(i[0]) + " | " + str(i[2]) + " | " + str(i[3]) + "\n"
     bot.reply_to(message, list)
     db.close()
     return
@@ -127,8 +130,7 @@ def echo_all(message):
     if rima != None:
         bot.reply_to(message, rima)
 
-punsdb = os.path.expanduser("/var/punsbot/punsdb.db")
+punsdb = os.path.expanduser(os.environ['DBLOCATION'])
 db_setup(dbfile=punsdb)
-triggers = db_load_triggers(dbfile=punsdb)
-print("Ready for puns!")
+print "PunsBot %s ready for puns!" %(version)
 bot.polling(none_stop=True)
