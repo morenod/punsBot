@@ -7,7 +7,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-version = 0.3
+version = 0.3.1
 allowed_chars = string.ascii_letters
 
 if 'TOKEN' not in os.environ:
