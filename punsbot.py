@@ -26,8 +26,8 @@ def db_setup(dbfile='puns.db'):
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
     with open(os.path.expanduser('./defaultpuns.txt'), 'r') as staticpuns:
         for line in staticpuns:
-            trigger = line.split('|')[0]
-            pun = line.split('|')[1]
+            trigger = line.split('|')[0].strip()
+            pun = line.split('|')[1].strip()
             answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
             if answer[0] == 0:
                 cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
@@ -63,12 +63,12 @@ def add(message):
     if quote == '' or  len(quote.split('|')) != 2:
         bot.reply_to(message, 'Missing pun or invalid syntax: \"/punadd \"pun trigger\"|\"pun\"')
         return
-    trigger = quote.split('|')[0]
+    trigger = quote.split('|')[0].strip()
     for character in trigger:
         if character not in allowed_chars:
             bot.reply_to(message, 'Invalid character '+ character + ' in trigger, only letters and numbers are allowed')
             return
-    pun = quote.split('|')[1]
+    pun = quote.split('|')[1].strip()
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
     answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid = ?''', (trigger,message.chat.id,)).fetchone()
