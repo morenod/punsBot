@@ -7,7 +7,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-version = "0.3.1"
+version = "0.3.2"
 allowed_chars = string.ascii_letters
 
 if 'TOKEN' not in os.environ:
@@ -37,11 +37,12 @@ def db_setup(dbfile='puns.db'):
 def findPun(message="",dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()[-1]
-    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last, message.chat.id)).fetchone()
-    db.commit()
-    db.close()
-    return answer
+    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()
+    if last != []:
+        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last[-1], message.chat.id)).fetchone()
+        db.commit()
+        db.close()
+        return answer
 
 @bot.message_handler(commands=['punshelp'])
 def help(message):
