@@ -10,7 +10,6 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-print allowed_chars_triggers
 version = "0.4.0"
 
 if 'TOKEN' not in os.environ:
