@@ -3,13 +3,14 @@ import os
 import sqlite3
 import uuid
 import string
+import re
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-allowed_chars = string.ascii_letters + " " + string.digits
+allowed_chars_puns = string.ascii_letters + " " + string.digits
+allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
 version = "0.4.0"
-allowed_chars = string.ascii_letters + " "
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -21,6 +22,14 @@ if 'DBLOCATION' not in os.environ:
 
 bot = telebot.TeleBot(os.environ['TOKEN'])
 
+def isValidRegex(regexp=""):
+    try:
+        re.compile(regexp)
+        is_valid = True
+    except re.error:
+        is_valid = False
+    return is_valid
+
 def load_default_puns(dbfile='puns.db',punsfile='puns.txt'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
@@ -30,12 +39,15 @@ def load_default_puns(dbfile='puns.db',punsfile='puns.txt'):
             number += 1
             if len(line.split('|')) == 2:
                 trigger = line.split('|')[0].strip()
-                pun = line.split('|')[1].strip()
-                answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
-                if answer[0] == 0:
-                    cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
-                    db.commit()
-                    print "Added default pun \"%s\" for trigger \"%s\"" %(pun,trigger)
+                if not isValidRegex(trigger):
+                    print "Incorrect regex trigger %s on line %s of file %s. Not added" %(trigger,str(number),punsfile)
+                else:
+                    pun = line.split('|')[1].strip()
+                    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
+                    if answer[0] == 0:
+                        cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
+                        db.commit()
+                        print "Added default pun \"%s\" for trigger \"%s\"" %(pun,trigger)
             else:
                 print "Incorrect line %s on file %s. Not added" %(str(number),punsfile)
     db.close()
@@ -53,12 +65,17 @@ def db_setup(dbfile='puns.db'):
 def findPun(message="",dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    last = "".join(c for c in message.text.lower() if c in allowed_chars).split()
+    last = "".join(c for c in message.text.lower() if c in allowed_chars_puns).split()
     if last != []:
-        answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (last[-1], message.chat.id)).fetchone()
-        db.commit()
-        db.close()
-        return answer
+        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''',(message.chat.id,)).fetchall()
+        for i in triggers:
+            if isValidRegex(i[0]):
+                regexp = re.compile(i[0])
+                if regexp.match(last[-1]) != None:
+                    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchone()
+                    db.commit()
+                    db.close()
+                    return answer
 
 @bot.message_handler(commands=['punshelp'])
 def help(message):
@@ -81,9 +98,12 @@ def add(message):
         return
     trigger = quote.split('|')[0].strip()
     for character in trigger:
-        if character not in allowed_chars:
+        if character not in allowed_chars_triggers:
             bot.reply_to(message, 'Invalid character '+ character + ' in trigger, only letters and numbers are allowed')
             return
+    if not isValidRegex(trigger):
+        bot.reply_to(message, 'Not valid regex '+ trigger + ' defined as trigger ')
+        return
     pun = quote.split('|')[1].strip()
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
