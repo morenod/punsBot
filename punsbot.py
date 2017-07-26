@@ -9,7 +9,6 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars = string.ascii_letters + " " + string.digits
 version = "0.4.0"
-allowed_chars = string.ascii_letters + " "
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
