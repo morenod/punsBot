@@ -5,6 +5,6 @@ RUN apk add --no-cache python python-dev py-pip build-base \
   && pip install PyTelegramBotAPI==3.1.0
 
 ADD punsbot.py /
-ADD defaultpuns.txt /
+ADD defaultpuns /defaultpuns
 
 CMD ["python", "-u", "/punsbot.py"]

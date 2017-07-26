@@ -7,8 +7,9 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-version = "0.3.4"
 allowed_chars = string.ascii_letters + " " + string.digits
+version = "0.4.0"
+allowed_chars = string.ascii_letters + " "
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -20,19 +21,34 @@ if 'DBLOCATION' not in os.environ:
 
 bot = telebot.TeleBot(os.environ['TOKEN'])
 
+def load_default_puns(dbfile='puns.db',punsfile='puns.txt'):
+    db = sqlite3.connect(dbfile)
+    cursor = db.cursor()
+    with open(os.path.expanduser(punsfile), 'r') as staticpuns:
+        number = 0
+        for line in staticpuns:
+            number += 1
+            if len(line.split('|')) == 2:
+                trigger = line.split('|')[0].strip()
+                pun = line.split('|')[1].strip()
+                answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
+                if answer[0] == 0:
+                    cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
+                    db.commit()
+                    print "Added default pun \"%s\" for trigger \"%s\"" %(pun,trigger)
+            else:
+                print "Incorrect line %s on file %s. Not added" %(str(number),punsfile)
+    db.close()
+
 def db_setup(dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
-    with open(os.path.expanduser('./defaultpuns.txt'), 'r') as staticpuns:
-        for line in staticpuns:
-            trigger = line.split('|')[0].strip()
-            pun = line.split('|')[1].strip()
-            answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
-            if answer[0] == 0:
-                cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
-                db.commit()
+    db.commit()
     db.close()
+    for file in os.listdir('./defaultpuns'):
+        if not os.path.isdir(file):
+            load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/"+file)
 
 def findPun(message="",dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
@@ -79,6 +95,7 @@ def add(message):
         cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()),  message.chat.id, trigger, pun))
         bot.reply_to(message, 'Pun added to your channel')
         db.commit()
+        print "Pun \"%s\" with trigger \"%s\" added to channel %s" %(pun,trigger,message.chat.id)
     db.close()
     return
 
@@ -101,6 +118,7 @@ def delete(message):
         cursor.execute('''DELETE FROM puns WHERE chatid = ? and uuid = ?''', (message.chat.id, quote))
         bot.reply_to(message, 'Pun deleted from your channel')
         db.commit()
+        print "Pun with UUID \"%s\" deleted from channel %s" %(quote,message.chat.id)
     db.close()
     return
 

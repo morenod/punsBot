@@ -1,0 +1,3 @@
+[submodule "defaultpuns"]
+	path = defaultpuns
+	url = https://github.com/morenod/defaultpuns.git
