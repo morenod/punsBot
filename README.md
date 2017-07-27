@@ -1,6 +1,16 @@
+###### GitHub Repo
+[![GitHub release](https://img.shields.io/github/release/morenod/punsbot.svg)]()
+[![license](https://img.shields.io/github/license/morenod/punsbot.svg)]()
+###### Docker Image
+[![](https://images.microbadger.com/badges/image/gotrunks/punsbot:0.4.0.svg)](https://microbadger.com/images/gotrunks/punsbot:0.4.0 "Get your own image badge on microbadger.com")
+[![](https://images.microbadger.com/badges/version/gotrunks/punsbot:0.4.0.svg)](https://microbadger.com/images/gotrunks/punsbot:0.4.0 "Get your own version badge on microbadger.com")
+[![Docker Automated buil](https://img.shields.io/docker/automated/gotrunks/punsbot.svg)]()
+[![Docker Build Statu](https://img.shields.io/docker/build/gotrunks/punsbot.svg)]()
+[![Docker Stars](https://img.shields.io/docker/stars/gotrunks/punsbot.svg)]()
+[![Docker Pulls](https://img.shields.io/docker/pulls/gotrunks/punsbot.svg)]()
 # PunsBot
 
-A very extended Spanish tradition is about to make puns when talking to a friend using the last word of a sentence.
+A very extended Spanish tradition is about to make puns when talking to a somebody using the last word of a sentence.
 
 For example (Spanish):
 
@@ -46,6 +56,9 @@ $ export TOKEN=<<telegram token>>
 
 For information about how to create a Telegram Bot and obtain a token, enter on https://core.telegram.org/bots
 
+### Default Puns Submodule
+
+Default puns are obtained from a [secondary repo](https://github.com/morenod/defaultpuns). It can be used or not to deploy a new instance. It is referenced from the bot repo pointing to the last existinng commit when release is created. If you want to use the last version of it, remember to update the submodule when clonning the repo.
 
 ### Installing
 
@@ -85,6 +98,15 @@ docker run --name=punsBot -v /var/punsdb:/var/punsdb -e TOKEN=$TOKEN -e DBLOCATI
 
 ## Usage
 
+- To start bot on a chat, add **@puns2bot** contact on it
+- To list available puns, execute **/list** or **/punslist**, it will list default puns, available for all chats, and specific puns, added on your channel.
+- To add a new pun, execute **/punadd** followed by the trigger used to detect the pun, a "|" char as separator and the pun, for example:
+  - **/punadd carlos|el de los cojones largos**
+- Regex are valid on triggers, for example:
+  - **/punadd ^.\*ado$|el que tengo aqui colgado**
+
+    This trigger will detect all words ended on **ado**, like Abogado, Certificado, etc...
+- To delete a pun, execute **/pundel** followed by the **UUID** of the pun. UUID can be obtained from the **/list** command. Only channel puns can be deleted.
 
 ## Authors
 
