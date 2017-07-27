@@ -8,6 +8,10 @@
 [![Docker Build Statu](https://img.shields.io/docker/build/gotrunks/punsbot.svg)]()
 [![Docker Stars](https://img.shields.io/docker/stars/gotrunks/punsbot.svg)]()
 [![Docker Pulls](https://img.shields.io/docker/pulls/gotrunks/punsbot.svg)]()
+###### Travis CI
+Master: [![Build Status](https://travis-ci.org/morenod/punsBot.svg?branch=master)](https://travis-ci.org/morenod/punsBot)
+
+Develop: [![Build Status](https://travis-ci.org/morenod/punsBot.svg?branch=develop)](https://travis-ci.org/morenod/punsBot)
 # PunsBot
 
 A very extended Spanish tradition is about to make puns when talking to a somebody using the last word of a sentence.
