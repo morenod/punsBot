@@ -1,16 +1,18 @@
+# -*- coding: utf-8 -*-
 import telebot
 import os
 import sqlite3
 import uuid
 import string
+import unicodedata
 import re
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-allowed_chars_puns = string.ascii_letters + " " + string.digits
+allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.4.0"
+version = "0.4.2"
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -69,13 +71,16 @@ def db_setup(dbfile='puns.db'):
 def findPun(message="", dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    last = "".join(c for c in message.text.lower() if c in allowed_chars_puns).split()
-    if last != []:
-        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''', (message.chat.id, )).fetchall()
+# First, remove emojis and any other char not in the allowed chars
+    clean_text = "".join(c for c in message.text.lower() if c in allowed_chars_puns).split()
+# Then, remove accents from letters, ó becomes on o to be compared with the triggers list
+    last_clean = unicodedata.normalize('NFKD', clean_text[-1]).encode('ASCII', 'ignore')
+    if last_clean != []:
+        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''',(message.chat.id,)).fetchall()
         for i in triggers:
             if isValidRegex(i[0]):
-                regexp = re.compile(i[0])
-                if regexp.match(last[-1]) is not None:
+                regexp = re.compile('^' + i[0] + '$')
+                if regexp.match(last_clean) != None:
                     answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchone()
                     db.commit()
                     db.close()
