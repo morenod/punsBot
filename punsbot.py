@@ -76,11 +76,11 @@ def findPun(message="", dbfile='puns.db'):
 # Then, remove accents from letters, ó becomes on o to be compared with the triggers list
     last_clean = unicodedata.normalize('NFKD', clean_text[-1]).encode('ASCII', 'ignore')
     if last_clean != []:
-        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''',(message.chat.id,)).fetchall()
+        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''', (message.chat.id,)).fetchall()
         for i in triggers:
             if isValidRegex(i[0]):
                 regexp = re.compile('^' + i[0] + '$')
-                if regexp.match(last_clean) != None:
+                if regexp.match(last_clean) in not None:
                     answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchone()
                     db.commit()
                     db.close()
