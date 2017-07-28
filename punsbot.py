@@ -62,9 +62,9 @@ def db_setup(dbfile='puns.db'):
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
     db.commit()
     db.close()
-    for file in os.listdir('./defaultpuns'):
-        if not os.path.isdir(file):
-            load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/"+file)
+    for db_file in os.listdir('./defaultpuns'):
+        if not os.path.isdir(db_file):
+            load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/"+db_file)
 
 def findPun(message="",dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
@@ -153,7 +153,7 @@ def delete(message):
 
 @bot.message_handler(commands=['list', 'punslist'])
 def list(message):
-    list = "| uuid | trigger | pun\n"
+    puns_list = "| uuid | trigger | pun\n"
     global punsdb
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
@@ -161,10 +161,10 @@ def list(message):
     db.commit()
     for i in answer:
         if str(i[1]) == '0':
-            list += "| default pun | " + str(i[2]) + " | " + str(i[3]) + "\n"
+            puns_list += "| default pun | " + str(i[2]) + " | " + str(i[3]) + "\n"
         else:
-            list += "| "+ str(i[0]) + " | " + str(i[2]) + " | " + str(i[3]) + "\n"
-    bot.reply_to(message, list)
+            puns_list += "| "+ str(i[0]) + " | " + str(i[2]) + " | " + str(i[3]) + "\n"
+    bot.reply_to(message, puns_list)
     db.close()
     return
 
@@ -182,3 +182,4 @@ punsdb = os.path.expanduser(os.environ['DBLOCATION'])
 db_setup(dbfile=punsdb)
 print "PunsBot %s ready for puns!" %(version)
 bot.polling(none_stop=True)
+
