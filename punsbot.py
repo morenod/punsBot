@@ -74,9 +74,9 @@ def findPun(message="", dbfile='puns.db'):
 # First, remove emojis and any other char not in the allowed chars
     clean_text = "".join(c for c in message.text.lower() if c in allowed_chars_puns).split()
 # Then, remove accents from letters, ó becomes on o to be compared with the triggers list
-    last_clean = unicodedata.normalize('NFKD', clean_text[-1]).encode('ASCII', 'ignore')
-    if last_clean != []:
-        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''', (message.chat.id,)).fetchall()
+    if clean_text != []:
+    	last_clean = unicodedata.normalize('NFKD', clean_text[-1]).encode('ASCII', 'ignore')
+        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''',(message.chat.id,)).fetchall()
         for i in triggers:
             if isValidRegex(i[0]):
                 regexp = re.compile('^' + i[0] + '$')
