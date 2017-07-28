@@ -13,6 +13,7 @@ sys.setdefaultencoding('utf-8')
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
 version = "0.4.2"
+required_validations = 5
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -49,7 +50,7 @@ def load_default_puns(dbfile='puns.db', punsfile='puns.txt'):
                     pun = line.split('|')[1].strip()
                     answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
                     if answer[0] == 0:
-                        cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), 0, trigger, pun))
+                        cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,?,?,?)''', (str(uuid.uuid4()), "0", "-1", trigger, pun))
                         db.commit()
                         print "Added default pun \"%s\" for trigger \"%s\"" % (pun, trigger)
             else:
@@ -60,7 +61,7 @@ def load_default_puns(dbfile='puns.db', punsfile='puns.txt'):
 def db_setup(dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
-    cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, validations int, trigger text, pun text)')
     db.commit()
     db.close()
     for file in os.listdir('./defaultpuns'):
@@ -76,12 +77,12 @@ def findPun(message="", dbfile='puns.db'):
 # Then, remove accents from letters, ó becomes on o to be compared with the triggers list
     if clean_text != []:
     	last_clean = unicodedata.normalize('NFKD', clean_text[-1]).encode('ASCII', 'ignore')
-        triggers = cursor.execute('''SELECT trigger from puns where chatid = ? or chatid = 0 order by chatid desc''',(message.chat.id,)).fetchall()
+        triggers = cursor.execute('''SELECT trigger from puns where (chatid = ? or chatid = 0) and validations = -1 order by chatid desc''',(message.chat.id,)).fetchall()
         for i in triggers:
             if isValidRegex(i[0]):
                 regexp = re.compile('^' + i[0] + '$')
                 if regexp.match(last_clean) is not None:
-                    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchone()
+                    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) and validations = -1 ORDER BY chatid desc''', (i[0], message.chat.id)).fetchone()
                     db.commit()
                     db.close()
                     return answer
@@ -97,6 +98,38 @@ def help(message):
     /punshelp       This help
     '''
     bot.reply_to(message, helpmessage)
+
+
+@bot.message_handler(commands=['punapprove'])
+def delete(message):
+    global triggers
+    global punsdb
+    quote = message.text.replace('/punapprove ', '')
+    if quote == '':
+        bot.reply_to(message, 'Missing uuid to approve or invalid syntax: \"/punapprove \"pun uuid\"')
+        return
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT count(uuid) FROM puns WHERE chatid = ? AND uuid = ?''', (message.chat.id, quote,)).fetchone()
+    db.commit()
+    if answer[0] != 1:
+        bot.reply_to(message, 'UUID ' + quote + ' not found')
+    else:
+        answer = cursor.execute('''SELECT validations FROM puns WHERE chatid = ? AND uuid = ?''', (message.chat.id, quote,)).fetchone()
+        if answer[0] == -1:
+            bot.reply_to(message, 'UUID ' + quote + ' is already enabled')
+        else:
+            validations = answer[0] + 1
+            if validations >= required_validations:
+                cursor.execute('''UPDATE puns SET validations = -1 WHERE uuid = ?''', (quote,))
+                db.commit()
+                bot.reply_to(message, 'Pun with UUID ' + quote + ' has been approved')
+            else:
+                cursor.execute('''UPDATE puns SET validations = ? WHERE uuid = ?''', (validations, quote,))
+                db.commit()
+                bot.reply_to(message, 'Added approve to UUID ' + quote)
+    db.close()
+    return
 
 
 @bot.message_handler(commands=['punadd'])
@@ -123,7 +156,7 @@ def add(message):
     if answer[0] != 0:
         bot.reply_to(message, 'There is already a pun with \'' + trigger + '\' as trigger for this group')
     else:
-        cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(uuid.uuid4()), message.chat.id, trigger, pun))
+        cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,0,?,?)''', (str(uuid.uuid4()), message.chat.id, trigger, pun))
         bot.reply_to(message, 'Pun added to your channel')
         db.commit()
         print "Pun \"%s\" with trigger \"%s\" added to channel %s" % (pun, trigger, message.chat.id)
@@ -164,9 +197,12 @@ def list(message):
     db.commit()
     for i in answer:
         if str(i[1]) == '0':
-            list += "| default pun | " + str(i[2]) + " | " + str(i[3]) + "\n"
+            list += "| default pun | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
         else:
-            list += "| " + str(i[0]) + " | " + str(i[2]) + " | " + str(i[3]) + "\n"
+            if str(i[2]) == '-1':
+                list += "| " + str(i[0]) + " | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
+            else:
+                list += "| " + str(i[0]) + " | disabled (" + str(required_validations - i[2]) + " more approvals required) | " + str(i[3]) + " | " + str(i[4]) + "\n"
     bot.reply_to(message, list)
     db.close()
     return
