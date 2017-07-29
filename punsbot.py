@@ -7,6 +7,8 @@ import string
 import unicodedata
 import re
 import sys
+import random
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -64,14 +66,14 @@ def db_setup(dbfile='puns.db'):
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, validations int, trigger text, pun text)')
     db.commit()
     db.close()
-    for file in os.listdir('./defaultpuns'):
-        if not os.path.isdir(file):
-            load_default_puns(dbfile=punsdb, punsfile="./defaultpuns/" + file)
-
+    for db_file in os.listdir('./defaultpuns'):
+        if not os.path.isdir(db_file):
+            load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/"+db_file)
 
 def findPun(message="", dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
+    answer_list = []
 # First, remove emojis and any other char not in the allowed chars
     clean_text = "".join(c for c in message.text.lower() if c in allowed_chars_puns).split()
 # Then, remove accents from letters, ó becomes on o to be compared with the triggers list
@@ -81,11 +83,12 @@ def findPun(message="", dbfile='puns.db'):
         for i in triggers:
             if isValidRegex(i[0]):
                 regexp = re.compile('^' + i[0] + '$')
-                if regexp.match(last_clean) is not None:
-                    answer = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) and validations = -1 ORDER BY chatid desc''', (i[0], message.chat.id)).fetchone()
+                if regexp.match(last_clean) != None:
+                    matches = cursor.execute('''SELECT pun from puns where trigger = ? AND (chatid = ? OR chatid = 0) AND validations = -1 ORDER BY chatid desc''', (i[0], message.chat.id)).fetchall()
+                    answer_list += matches
                     db.commit()
                     db.close()
-                    return answer
+                    return random.choice(answer_list)
 
 
 @bot.message_handler(commands=['punshelp'])
@@ -151,10 +154,10 @@ def add(message):
     pun = quote.split('|')[1].strip()
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid = ?''', (trigger, message.chat.id,)).fetchone()
+    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid = ? AND pun = ?''', (trigger,message.chat.id,pun)).fetchone()
     db.commit()
     if answer[0] != 0:
-        bot.reply_to(message, 'There is already a pun with \'' + trigger + '\' as trigger for this group')
+        bot.reply_to(message, 'A trigger with this pun already exists')
     else:
         cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,0,?,?)''', (str(uuid.uuid4()), message.chat.id, trigger, pun))
         bot.reply_to(message, 'Pun added to your channel')
@@ -189,7 +192,7 @@ def delete(message):
 
 @bot.message_handler(commands=['list', 'punslist'])
 def list(message):
-    list = "| uuid | trigger | pun\n"
+    puns_list = "| uuid | status | trigger | pun\n"
     global punsdb
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
@@ -197,13 +200,13 @@ def list(message):
     db.commit()
     for i in answer:
         if str(i[1]) == '0':
-            list += "| default pun | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
+            puns_list += "| default pun | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
         else:
             if str(i[2]) == '-1':
-                list += "| " + str(i[0]) + " | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
+                puns_list += "| " + str(i[0]) + " | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
             else:
-                list += "| " + str(i[0]) + " | disabled (" + str(required_validations - i[2]) + " more approvals required) | " + str(i[3]) + " | " + str(i[4]) + "\n"
-    bot.reply_to(message, list)
+                puns_list += "| " + str(i[0]) + " | disabled (" + str(required_validations - i[2]) + " more approvals required) | " + str(i[3]) + " | " + str(i[4]) + "\n"
+    bot.reply_to(message, puns_list)
     db.close()
     return
 
