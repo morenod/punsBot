@@ -50,9 +50,9 @@ def load_default_puns(dbfile='puns.db', punsfile='puns.txt'):
                     print "Incorrect regex trigger %s on line %s of file %s. Not added" % (trigger, str(number), punsfile)
                 else:
                     pun = line.split('|')[1].strip()
-                    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun, trigger,)).fetchone()
+                    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE pun = ? AND trigger = ? AND chatid = 0''', (pun.decode('utf8'), trigger.decode('utf8'),)).fetchone()
                     if answer[0] == 0:
-                        cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,?,?,?)''', (str(uuid.uuid4()), "0", "-1", trigger, pun))
+                        cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,?,?,?)''', (str(uuid.uuid4()), "0", "-1", trigger.decode('utf8'), pun.decode('utf8')))
                         db.commit()
                         print "Added default pun \"%s\" for trigger \"%s\"" % (pun, trigger)
             else:
@@ -66,9 +66,9 @@ def db_setup(dbfile='puns.db'):
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, validations int, trigger text, pun text)')
     db.commit()
     db.close()
-    for db_file in os.listdir('./defaultpuns'):
-        if not os.path.isdir(db_file):
-            load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/"+db_file)
+    for db_file in os.listdir('./defaultpuns/punsfiles'):
+        load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/punsfiles/"+db_file)
+
 
 def findPun(message="", dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
@@ -159,7 +159,7 @@ def add(message):
     if answer[0] != 0:
         bot.reply_to(message, 'A trigger with this pun already exists')
     else:
-        cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,0,?,?)''', (str(uuid.uuid4()), message.chat.id, trigger, pun))
+        cursor.execute('''INSERT INTO puns(uuid,chatid,validations,trigger,pun) VALUES(?,?,0,?,?)''', (str(uuid.uuid4()), message.chat.id, trigger.decode('utf8'), pun.decode('utf8')))
         bot.reply_to(message, 'Pun added to your channel')
         db.commit()
         print "Pun \"%s\" with trigger \"%s\" added to channel %s" % (pun, trigger, message.chat.id)
