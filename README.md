@@ -110,12 +110,24 @@ docker run --name=punsBot -v /var/punsdb:/var/punsdb -e TOKEN=$TOKEN -e DBLOCATI
   - **/punadd ^.\*ado$|el que tengo aqui colgado**
 
     This trigger will detect all words ended on **ado**, like Abogado, Certificado, etc...
+
+- Added puns are created disabled, they have to be validated by people of the chat. Minimun karma required to enable a pun can be configured with the parameter **required_validations**
+
+- To add +1 to the karma of a pun, execute **/punapprove UUID**
+
+- To add -1 to the karma of a pun, execute **/punban UUID**
+
 - To delete a pun, execute **/pundel** followed by the **UUID** of the pun. UUID can be obtained from the **/list** command. Only channel puns can be deleted.
+
+## Production Deployment
+
+A running instance of punsBot can be found opening a chat to the Telegram contact @puns2bot
 
 ## Authors
 
 * **David Sanz** - *Initial work* - [morenod github](https://github.com/morenod)
 * **Karim Boumedhel** - *Default puns & database initial load* - [karmab github](https://github.com/karmab)
+* **Raul Sevilla** - *Default puns & randomize puns* - [rsevilla87 github](https://github.com/rsevilla87)
 
 See also the list of [contributors](https://github.com/morenod/punsBot/graphs/contributors) who participated in this project.
 
