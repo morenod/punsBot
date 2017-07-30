@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.4.2"
+version = "0.5.0"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -100,7 +100,7 @@ def help(message):
     /punadd         Add a new pun (trigger|pun)
     /pundel         Delete an existing pun (uuid)
     /punlist        Lists all the puns for this chat (/list or /punslist)
-    /punapprove     Give +1 to a pun (pun will be enable if karma is more o equal than %s)
+    /punapprove     Give +1 to a pun (required karma: %s)
     /punban         Give -1 to a pun
     /punshelp       This help (/help)
     ''' % (required_validations)
