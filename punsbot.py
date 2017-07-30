@@ -68,7 +68,7 @@ def db_setup(dbfile='puns.db'):
     db.commit()
     db.close()
     for db_file in os.listdir('./defaultpuns/punsfiles'):
-        load_default_puns(dbfile=punsdb,punsfile="./defaultpuns/punsfiles/"+db_file)
+        load_default_puns(dbfile=punsdb, punsfile="./defaultpuns/punsfiles/" + db_file)
 
 
 def findPun(message="", dbfile='puns.db'):
@@ -94,7 +94,7 @@ def findPun(message="", dbfile='puns.db'):
         return None if answer_list == [] else random.choice(answer_list)
 
 
-@bot.message_handler(commands=['punshelp','help'])
+@bot.message_handler(commands=['punshelp', 'help'])
 def help(message):
     helpmessage = '''Those are the commands available
     /punadd         Add a new pun (trigger|pun)
@@ -125,7 +125,7 @@ def delete(message):
         if answer[0] >= 1:
             bot.reply_to(message, 'You have already approved ' + quote + '. Only one approve by user is allowed.')
         else:
-            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (quote.strip(),message.chat.id,message.chat.username))
+            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (quote.strip(), message.chat.id, message.chat.username))
             db.commit()
             answer = cursor.execute('''SELECT SUM(karma) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
             bot.reply_to(message, 'Thanks for approve ' + quote.strip() + '. Pun karma is ' + str(answer[0]))
@@ -151,7 +151,7 @@ def delete(message):
         if answer[0] >= 1:
             bot.reply_to(message, 'You have already ban ' + quote + '. Only one ban by user is allowed.')
         else:
-            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,-1)''', (quote.strip(),message.chat.id,message.chat.username))
+            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,-1)''', (quote.strip(), message.chat.id, message.chat.username))
             db.commit()
             answer = cursor.execute('''SELECT SUM(karma) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
             bot.reply_to(message, 'Thanks for ban ' + quote.strip() + '. Pun karma is ' + str(answer[0]))
@@ -178,7 +178,7 @@ def add(message):
     pun = quote.split('|')[1].strip()
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
-    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid = ? AND pun = ?''', (trigger,message.chat.id,pun)).fetchone()
+    answer = cursor.execute('''SELECT count(trigger) FROM puns WHERE trigger = ? AND chatid = ? AND pun = ?''', (trigger, message.chat.id, pun)).fetchone()
     db.commit()
     if answer[0] != 0:
         bot.reply_to(message, 'A trigger with this pun already exists')
@@ -231,14 +231,14 @@ def list(message):
             puns_list += "| default pun | always enabled | " + str(i[2]) + " | " + str(i[3]) + "\n"
         else:
             if validations[0] >= required_validations:
-                puns_list += "| " + str(i[0]) + " | enabled (" + str(validations[0]) +  "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                puns_list += "| " + str(i[0]) + " | enabled (" + str(validations[0]) + "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
             else:
-                puns_list += "| " + str(i[0]) + " | disabled (" + str(validations[0]) +  "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                puns_list += "| " + str(i[0]) + " | disabled (" + str(validations[0]) + "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
     if len(puns_list) > 4000:
         entries = puns_list.split('\n')
         output = ""
         for i in entries:
-            if len(index+output+i) > 4000:
+            if len(index + output + i) > 4000:
                 bot.reply_to(message, index + output)
                 output = i
             else:
