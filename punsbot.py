@@ -192,7 +192,8 @@ def delete(message):
 
 @bot.message_handler(commands=['list', 'punslist'])
 def list(message):
-    puns_list = "| uuid | status | trigger | pun\n"
+    index = "| uuid | status | trigger | pun\n"
+    puns_list = ""
     global punsdb
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
@@ -206,7 +207,18 @@ def list(message):
                 puns_list += "| " + str(i[0]) + " | enabled | " + str(i[3]) + " | " + str(i[4]) + "\n"
             else:
                 puns_list += "| " + str(i[0]) + " | disabled (" + str(required_validations - i[2]) + " more approvals required) | " + str(i[3]) + " | " + str(i[4]) + "\n"
-    bot.reply_to(message, puns_list)
+    if len(puns_list) > 4000:
+        entries = puns_list.split('\n')
+        output = ""
+        for i in entries:
+            if len(index+output+i) > 4000:
+                bot.reply_to(message, index + output)
+                output = i
+            else:
+                output = output + i
+        bot.reply_to(message, index + output)
+    else:
+        bot.reply_to(message, index + puns_list)
     db.close()
     return
 
@@ -221,6 +233,7 @@ def echo_all(message):
     rima = findPun(message=message, dbfile=punsdb)
     if rima is not None:
         bot.reply_to(message, rima)
+
 
 punsdb = os.path.expanduser(os.environ['DBLOCATION'])
 db_setup(dbfile=punsdb)
