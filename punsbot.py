@@ -64,7 +64,7 @@ def db_setup(dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
-    cursor.execute('CREATE TABLE IF NOT EXISTS validations (punid text, chatid int, userid text)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS validations (punid text, chatid int, userid text, karma int)')
     db.commit()
     db.close()
     for db_file in os.listdir('./defaultpuns/punsfiles'):
@@ -87,23 +87,23 @@ def findPun(message="", dbfile='puns.db'):
                 if regexp.match(last_clean) is not None:
                     matches = cursor.execute('''SELECT uuid,pun,chatid from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchall()
                     for j in matches:
-                        enabled = cursor.execute('''SELECT count(punid) from validations where punid = ? AND chatid = ?''', (j[0], message.chat.id)).fetchone()
+                        enabled = cursor.execute('''SELECT SUM(karma) from validations where punid = ? AND chatid = ?''', (j[0], message.chat.id)).fetchone()
                         if j[2] == 0 or enabled[0] >= required_validations:
                             answer_list.append(j[1])
         db.close()
-        print answer_list
         return None if answer_list == [] else random.choice(answer_list)
 
 
-@bot.message_handler(commands=['punshelp'])
+@bot.message_handler(commands=['punshelp','help'])
 def help(message):
     helpmessage = '''Those are the commands available
     /punadd         Add a new pun (trigger|pun)
     /pundel         Delete an existing pun (uuid)
-    /punlist        Lists all the puns for this chat
-    /punmod         Modify an existing pun (uuid|trigger|pun)
-    /punshelp       This help
-    '''
+    /punlist        Lists all the puns for this chat (/list or /punslist)
+    /punapprove     Give +1 to a pun (pun will be enable if karma is more o equal than %s)
+    /punban         Give -1 to a pun
+    /punshelp       This help (/help)
+    ''' % (required_validations)
     bot.reply_to(message, helpmessage)
 
 
@@ -111,7 +111,7 @@ def help(message):
 def delete(message):
     global triggers
     global punsdb
-    quote = message.text.replace('/punapprove ', '')
+    quote = message.text.replace('/punapprove', '')
     if quote == '':
         bot.reply_to(message, 'Missing uuid to approve or invalid syntax: \"/punapprove \"pun uuid\"')
         return
@@ -121,17 +121,40 @@ def delete(message):
     if answer[0] != 1:
         bot.reply_to(message, 'UUID ' + quote.strip() + ' not found')
     else:
-        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ?''', (message.chat.id, quote.strip(), message.chat.username)).fetchone()
-        if answer[0] == 1:
+        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ? and karma = 1''', (message.chat.id, quote.strip(), message.chat.username)).fetchone()
+        if answer[0] >= 1:
             bot.reply_to(message, 'You have already approved ' + quote + '. Only one approve by user is allowed.')
         else:
-            cursor.execute('''INSERT INTO validations(punid,chatid,userid) VALUES(?,?,?)''', (quote.strip(),message.chat.id,message.chat.username))
+            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (quote.strip(),message.chat.id,message.chat.username))
             db.commit()
-            answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
-            if answer[0] >= required_validations:
-                bot.reply_to(message, 'Thanks for approve ' + quote.strip() + '. It has been enabled')
-            else:
-                bot.reply_to(message, 'Thanks for approve ' + quote.strip() + '. ' + str(required_validations - answer[0] ) + ' more approves are required to enable it')
+            answer = cursor.execute('''SELECT SUM(karma) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
+            bot.reply_to(message, 'Thanks for approve ' + quote.strip() + '. Pun karma is ' + str(answer[0]))
+    db.close()
+    return
+
+
+@bot.message_handler(commands=['punban'])
+def delete(message):
+    global triggers
+    global punsdb
+    quote = message.text.replace('/punban', '')
+    if quote == '':
+        bot.reply_to(message, 'Missing uuid to ban or invalid syntax: \"/punban \"pun uuid\"')
+        return
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT count(uuid) FROM puns WHERE chatid = ? AND uuid = ?''', (message.chat.id, quote.strip(),)).fetchone()
+    if answer[0] != 1:
+        bot.reply_to(message, 'UUID ' + quote.strip() + ' not found')
+    else:
+        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ? and karma = -1''', (message.chat.id, quote.strip(), message.chat.username)).fetchone()
+        if answer[0] >= 1:
+            bot.reply_to(message, 'You have already ban ' + quote + '. Only one ban by user is allowed.')
+        else:
+            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,-1)''', (quote.strip(),message.chat.id,message.chat.username))
+            db.commit()
+            answer = cursor.execute('''SELECT SUM(karma) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
+            bot.reply_to(message, 'Thanks for ban ' + quote.strip() + '. Pun karma is ' + str(answer[0]))
     db.close()
     return
 
@@ -162,7 +185,7 @@ def add(message):
     else:
         punid = uuid.uuid4()
         cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(punid), message.chat.id, trigger.decode('utf8'), pun.decode('utf8')))
-        cursor.execute('''INSERT INTO validations(punid,chatid,userid) VALUES(?,?,?)''', (str(punid), message.chat.id, message.chat.username))
+        cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (str(punid), message.chat.id, message.chat.username))
         db.commit()
         bot.reply_to(message, 'Pun ' + str(punid) + ' added to your channel. It have to be approved by ' + str(required_validations) + ' different people to be enabled on this chat')
         print "Pun \"%s\" with trigger \"%s\" added to channel %s" % (pun, trigger, message.chat.id)
@@ -193,9 +216,9 @@ def delete(message):
     return
 
 
-@bot.message_handler(commands=['list', 'punslist'])
+@bot.message_handler(commands=['list', 'punlist', 'punslist'])
 def list(message):
-    index = "| uuid | status | trigger | pun\n"
+    index = "| uuid | status (karma) | trigger | pun\n"
     puns_list = ""
     global punsdb
     db = sqlite3.connect(punsdb)
@@ -203,14 +226,14 @@ def list(message):
     answer = cursor.execute('''SELECT * from puns WHERE (chatid = ? OR chatid = 0) ORDER BY chatid''', (message.chat.id,)).fetchall()
     db.commit()
     for i in answer:
-        validations = cursor.execute('''SELECT count(validations.punid) FROM puns,validations WHERE puns.chatid = ? AND puns.uuid = ? AND puns.uuid == validations.punid AND puns.chatid = validations.chatid''', (message.chat.id, i[0],)).fetchone()
+        validations = cursor.execute('''SELECT SUM(validations.karma) FROM puns,validations WHERE puns.chatid = ? AND puns.uuid = ? AND puns.uuid == validations.punid AND puns.chatid = validations.chatid''', (message.chat.id, i[0],)).fetchone()
         if str(i[1]) == '0':
-            puns_list += "| default pun | enabled | " + str(i[2]) + " | " + str(i[3]) + "\n"
+            puns_list += "| default pun | always enabled | " + str(i[2]) + " | " + str(i[3]) + "\n"
         else:
             if validations[0] >= required_validations:
-                puns_list += "| " + str(i[0]) + " | enabled | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                puns_list += "| " + str(i[0]) + " | enabled (" + str(validations[0]) +  "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
             else:
-                puns_list += "| " + str(i[0]) + " | disabled (" + str( required_validations - validations[0] ) +  " more approves required') | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                puns_list += "| " + str(i[0]) + " | disabled (" + str(validations[0]) +  "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
     if len(puns_list) > 4000:
         entries = puns_list.split('\n')
         output = ""
@@ -227,7 +250,7 @@ def list(message):
     return
 
 
-@bot.message_handler(commands=['start', 'help'])
+@bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Lets do some pun jokes, use /punshelp for help")
 
