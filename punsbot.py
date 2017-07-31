@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.5.0"
+version = "0.5.1"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -88,7 +88,7 @@ def find_pun(message="", dbfile='puns.db'):
                     matches = cursor.execute('''SELECT uuid,pun,chatid from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchall()
                     for j in matches:
                         enabled = cursor.execute('''SELECT SUM(karma) from validations where punid = ? AND chatid = ?''', (j[0], message.chat.id)).fetchone()
-                        if j[2] == 0 or enabled[0] >= required_validations:
+                        if j[2] == 0 or enabled[0] >= required_validations or (bot.get_chat_members_count(message.chat.id) < required_validations and enabled[0] > 0):
                             answer_list.append(j[1])
         db.close()
         return None if answer_list == [] else random.choice(answer_list)
@@ -100,10 +100,13 @@ def help(message):
     /punadd         Add a new pun (trigger|pun)
     /pundel         Delete an existing pun (uuid)
     /punlist        Lists all the puns for this chat (/list or /punslist)
-    /punapprove     Give +1 to a pun (required karma: %s)
+    /punapprove     Give +1 to a pun
     /punban         Give -1 to a pun
     /punshelp       This help (/help)
-    ''' % (required_validations)
+
+    Puns will be enabled if karma is over %s on groups with more than %s people.
+    On groups with less people, only positive karma is required
+    ''' % (required_validations, required_validations)
     bot.reply_to(message, helpmessage)
 
 
@@ -121,11 +124,11 @@ def delete(message):
     if answer[0] != 1:
         bot.reply_to(message, 'UUID ' + quote.strip() + ' not found')
     else:
-        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ? and karma = 1''', (message.chat.id, quote.strip(), message.chat.username)).fetchone()
+        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ? and karma = 1''', (message.chat.id, quote.strip(), message.from_user.id)).fetchone()
         if answer[0] >= 1:
             bot.reply_to(message, 'You have already approved ' + quote + '. Only one approve by user is allowed.')
         else:
-            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (quote.strip(), message.chat.id, message.chat.username))
+            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (quote.strip(), message.chat.id, message.from_user.id))
             db.commit()
             answer = cursor.execute('''SELECT SUM(karma) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
             bot.reply_to(message, 'Thanks for approve ' + quote.strip() + '. Pun karma is ' + str(answer[0]))
@@ -147,11 +150,11 @@ def delete(message):
     if answer[0] != 1:
         bot.reply_to(message, 'UUID ' + quote.strip() + ' not found')
     else:
-        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ? and karma = -1''', (message.chat.id, quote.strip(), message.chat.username)).fetchone()
+        answer = cursor.execute('''SELECT count(punid) FROM validations WHERE chatid = ? AND punid = ? AND userid = ? and karma = -1''', (message.chat.id, quote.strip(), message.from_user.id)).fetchone()
         if answer[0] >= 1:
             bot.reply_to(message, 'You have already ban ' + quote + '. Only one ban by user is allowed.')
         else:
-            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,-1)''', (quote.strip(), message.chat.id, message.chat.username))
+            cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,-1)''', (quote.strip(), message.chat.id, message.from_user.id))
             db.commit()
             answer = cursor.execute('''SELECT SUM(karma) FROM validations WHERE chatid = ? AND punid = ?''', (message.chat.id, quote.strip())).fetchone()
             bot.reply_to(message, 'Thanks for ban ' + quote.strip() + '. Pun karma is ' + str(answer[0]))
@@ -185,9 +188,12 @@ def add(message):
     else:
         punid = uuid.uuid4()
         cursor.execute('''INSERT INTO puns(uuid,chatid,trigger,pun) VALUES(?,?,?,?)''', (str(punid), message.chat.id, trigger.decode('utf8'), pun.decode('utf8')))
-        cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (str(punid), message.chat.id, message.chat.username))
+        cursor.execute('''INSERT INTO validations(punid,chatid,userid,karma) VALUES(?,?,?,1)''', (str(punid), message.chat.id, message.from_user.id))
         db.commit()
-        bot.reply_to(message, 'Pun ' + str(punid) + ' added to your channel. It have to be approved by ' + str(required_validations) + ' different people to be enabled on this chat')
+        if bot.get_chat_members_count(message.chat.id) >= required_validations:
+            bot.reply_to(message, 'Pun ' + str(punid) + ' added to your channel. It have to be approved by ' + str(required_validations) + ' different people to be enabled on this chat')
+        else:
+            bot.reply_to(message, 'Pun ' + str(punid) + ' added to your channel. Positive karma is required to enable pun on this chat')
         print "Pun \"%s\" with trigger \"%s\" added to channel %s" % (pun, trigger, message.chat.id)
     db.close()
     return
@@ -230,19 +236,25 @@ def list(message):
         if str(i[1]) == '0':
             puns_list += "| default pun | always enabled | " + str(i[2]) + " | " + str(i[3]) + "\n"
         else:
-            if validations[0] >= required_validations:
-                puns_list += "| " + str(i[0]) + " | enabled (" + str(validations[0]) + "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
+            if bot.get_chat_members_count(message.chat.id) >= required_validations:
+                if validations[0] >= required_validations:
+                    puns_list += "| " + str(i[0]) + " | enabled (" + str(validations[0]) + "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                else:
+                    puns_list += "| " + str(i[0]) + " | disabled (" + str(validations[0]) + "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
             else:
-                puns_list += "| " + str(i[0]) + " | disabled (" + str(validations[0]) + "/" + str(required_validations) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                if validations[0] > 0:
+                    puns_list += "| " + str(i[0]) + " | enabled (" + str(validations[0]) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
+                else:
+                    puns_list += "| " + str(i[0]) + " | disabled (" + str(validations[0]) + ") | " + str(i[2]) + " | " + str(i[3]) + "\n"
     if len(puns_list) > 4000:
         entries = puns_list.split('\n')
         output = ""
         for i in entries:
-            if len(index + output + i) > 4000:
+            if len(index + output + i + '\n') > 4000:
                 bot.reply_to(message, index + output)
-                output = i
+                output = i + '\n'
             else:
-                output = output + i
+                output = output + i + '\n'
         bot.reply_to(message, index + output)
     else:
         bot.reply_to(message, index + puns_list)
