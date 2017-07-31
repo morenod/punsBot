@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.5.0"
+version = "0.5.1"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -278,6 +278,3 @@ punsdb = os.path.expanduser(os.environ['DBLOCATION'])
 db_setup(dbfile=punsdb)
 print "PunsBot %s ready for puns!" % (version)
 bot.polling(none_stop=True)
-
-
-#bot.get_chat_members_count(message.chat.id)
