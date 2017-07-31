@@ -28,7 +28,7 @@ if 'DBLOCATION' not in os.environ:
 bot = telebot.TeleBot(os.environ['TOKEN'])
 
 
-def isValidRegex(regexp=""):
+def is_valid_regex(regexp=""):
     try:
         re.compile(regexp)
         is_valid = True
@@ -46,7 +46,7 @@ def load_default_puns(dbfile='puns.db', punsfile='puns.txt'):
             number += 1
             if len(line.split('|')) == 2:
                 trigger = line.split('|')[0].strip()
-                if not isValidRegex(trigger):
+                if not is_valid_regex(trigger):
                     print "Incorrect regex trigger %s on line %s of file %s. Not added" % (trigger, str(number), punsfile)
                 else:
                     pun = line.split('|')[1].strip()
@@ -71,7 +71,7 @@ def db_setup(dbfile='puns.db'):
         load_default_puns(dbfile=punsdb, punsfile="./defaultpuns/punsfiles/" + db_file)
 
 
-def findPun(message="", dbfile='puns.db'):
+def find_pun(message="", dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
     answer_list = []
@@ -82,7 +82,7 @@ def findPun(message="", dbfile='puns.db'):
         last_clean = unicodedata.normalize('NFKD', clean_text[-1]).encode('ASCII', 'ignore')
         triggers = cursor.execute('''SELECT trigger from puns where (chatid = ? or chatid = 0) order by chatid desc''', (message.chat.id,)).fetchall()
         for i in triggers:
-            if isValidRegex(i[0]):
+            if is_valid_regex(i[0]):
                 regexp = re.compile('^' + i[0] + '$')
                 if regexp.match(last_clean) is not None:
                     matches = cursor.execute('''SELECT uuid,pun,chatid from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchall()
@@ -172,7 +172,7 @@ def add(message):
         if character not in allowed_chars_triggers:
             bot.reply_to(message, 'Invalid character ' + character + ' in trigger, only letters and numbers are allowed')
             return
-    if not isValidRegex(trigger):
+    if not is_valid_regex(trigger):
         bot.reply_to(message, 'Not valid regex ' + trigger + ' defined as trigger ')
         return
     pun = quote.split('|')[1].strip()
@@ -257,7 +257,7 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
-    rima = findPun(message=message, dbfile=punsdb)
+    rima = find_pun(message=message, dbfile=punsdb)
     if rima is not None:
         bot.reply_to(message, rima)
 
