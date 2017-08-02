@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.5.1"
+version = "0.5.2"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
