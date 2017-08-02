@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.5.1"
+version = "0.5.2"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -87,9 +87,10 @@ def find_pun(message="", dbfile='puns.db'):
                 if regexp.match(last_clean) is not None:
                     matches = cursor.execute('''SELECT uuid,pun,chatid from puns where trigger = ? AND (chatid = ? OR chatid = 0) ORDER BY chatid desc''', (i[0], message.chat.id)).fetchall()
                     for j in matches:
-                        enabled = cursor.execute('''SELECT SUM(karma) from validations where punid = ? AND chatid = ?''', (j[0], message.chat.id)).fetchone()
-                        if j[2] == 0 or enabled[0] >= required_validations or (bot.get_chat_members_count(message.chat.id) < required_validations and enabled[0] > 0):
-                            answer_list.append(j[1])
+                        if j[1].split()[-1] != last_clean:
+                            enabled = cursor.execute('''SELECT SUM(karma) from validations where punid = ? AND chatid = ?''', (j[0], message.chat.id)).fetchone()
+                            if j[2] == 0 or enabled[0] >= required_validations or (bot.get_chat_members_count(message.chat.id) < required_validations and enabled[0] > 0):
+                                answer_list.append(j[1])
         db.close()
         return None if answer_list == [] else random.choice(answer_list)
 
