@@ -8,6 +8,7 @@ import unicodedata
 import re
 import sys
 import random
+import time
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -16,6 +17,7 @@ allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúà�
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
 version = "0.5.2"
 required_validations = 5
+silence_until = time.time()
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -223,6 +225,16 @@ def delete(message):
     return
 
 
+@bot.message_handler(commands=['punsilence'])
+def silence(message):
+    global silence_until
+    quote = message.text.replace('/punsilence ', '')
+    if quote == '' or not quote.isdigit():
+        bot.reply_to(message, 'Missing time ti silence or invalid syntax: \"/punsilence "time in minutes"')
+        return
+    silence_until = time.time() + 60 * int(quote)
+
+
 @bot.message_handler(commands=['list', 'punlist', 'punslist'])
 def list(message):
     index = "| uuid | status (karma) | trigger | pun\n"
@@ -270,9 +282,10 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
-    rima = find_pun(message=message, dbfile=punsdb)
-    if rima is not None:
-        bot.reply_to(message, rima)
+    if time.time() >= silence_until:
+        rima = find_pun(message=message, dbfile=punsdb)
+        if rima is not None:
+            bot.reply_to(message, rima)
 
 
 punsdb = os.path.expanduser(os.environ['DBLOCATION'])
