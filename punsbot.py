@@ -15,9 +15,8 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.5.2"
+version = "0.6.0"
 required_validations = 5
-silence_until = time.time()
 
 if 'TOKEN' not in os.environ:
     print("missing TOKEN.Leaving...")
@@ -67,10 +66,28 @@ def db_setup(dbfile='puns.db'):
     cursor = db.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
     cursor.execute('CREATE TABLE IF NOT EXISTS validations (punid text, chatid int, userid text, karma int)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS chatoptions (chatid int, silence int, unique (chatid))')
     db.commit()
     db.close()
     for db_file in os.listdir('./defaultpuns/punsfiles'):
         load_default_puns(dbfile=punsdb, punsfile="./defaultpuns/punsfiles/" + db_file)
+
+
+def is_chat_silenced(message="", dbfile='puns.db'):
+    db = sqlite3.connect(dbfile)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT silence from chatoptions where chatid = ?''', (message.chat.id,)).fetchone()
+    silence = int(answer[0] if answer is not None else 0)
+    return True if silence > time.time() else False
+
+
+def silence_until(chatid=""):
+    global punsdb
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT silence from chatoptions where chatid = ?''', (chatid,)).fetchone()
+    return str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(answer[0]))) if answer is not None and int(time.time()) < int(answer[0]) else "Never"
+
 
 
 def find_pun(message="", dbfile='puns.db'):
@@ -105,11 +122,14 @@ def help(message):
     /punlist        Lists all the puns for this chat (/list or /punslist)
     /punapprove     Give +1 to a pun
     /punban         Give -1 to a pun
+    /punsilence     Stop puns for specified minutes
     /punshelp       This help (/help)
+
+    ** PunsBot muted on this channel until %s  **
 
     Puns will be enabled if karma is over %s on groups with more than %s people.
     On groups with less people, only positive karma is required
-    ''' % (required_validations, required_validations)
+    ''' % (silence_until(message.chat.id), required_validations, required_validations)
     bot.reply_to(message, helpmessage)
 
 
@@ -227,12 +247,18 @@ def delete(message):
 
 @bot.message_handler(commands=['punsilence'])
 def silence(message):
-    global silence_until
+    global punsdb
     quote = message.text.replace('/punsilence ', '')
     if quote == '' or not quote.isdigit():
-        bot.reply_to(message, 'Missing time ti silence or invalid syntax: \"/punsilence "time in minutes"')
+        bot.reply_to(message, 'Missing time to silence or invalid syntax: \"/punsilence "time in minutes"')
         return
-    silence_until = time.time() + 60 * int(quote)
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT silence from chatoptions WHERE (chatid = ?)''', (message.chat.id,)).fetchone()
+    silence = 60 * int(quote) + int(answer[0] if answer is not None else time.time())
+    cursor.execute('''INSERT OR REPLACE INTO chatoptions(chatid,silence) VALUES(?,?)''', (message.chat.id, silence))
+    db.commit()
+    bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(silence)))
 
 
 @bot.message_handler(commands=['list', 'punlist', 'punslist'])
@@ -282,7 +308,7 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
-    if time.time() >= silence_until:
+    if not is_chat_silenced(message=message, dbfile=punsdb):
         rima = find_pun(message=message, dbfile=punsdb)
         if rima is not None:
             bot.reply_to(message, rima)
