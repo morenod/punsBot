@@ -4,7 +4,7 @@ MAINTAINER morenod
 RUN apk add --no-cache tzdata python python-dev py-pip build-base \
   && pip install PyTelegramBotAPI==3.1.0
 
-TZ=Europe/Madrid
+ENV TZ="Europe/Madrid"
 
 ADD punsbot.py /
 ADD defaultpuns /defaultpuns
