@@ -121,7 +121,7 @@ docker run --name=punsBot -v /var/punsdb:/var/punsdb -e TOKEN=$TOKEN -e DBLOCATI
 
 ## Production Deployment
 
-A running instance of punsBot can be found opening a chat to the Telegram contact @puns2bot
+A running instance of punsBot can be found opening a chat to the Telegram contact @puns2bot or entering on https://telegram.me/puns2bot
 
 ## Authors
 
