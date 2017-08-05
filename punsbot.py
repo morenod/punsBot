@@ -299,7 +299,10 @@ def silence(message):
         bot.reply_to(message, 'Disabling PunsBot for more than one hour is not funny 😢')
         return
     chatoptions = load_chat_options(message.chat.id)
-    chatoptions['silence'] = 60 * int(quote) + int((chatoptions['silence']) if chatoptions['silence'] is not None else int(time.time()))
+    if chatoptions['silence'] is None or int(chatoptions['silence']) <= int(time.time()):
+        chatoptions['silence'] = 60 * int(quote) + int(time.time())
+    else:
+        chatoptions['silence'] = 60 * int(quote) + int(chatoptions['silence'])
     set_chat_options(chatoptions)
     bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(chatoptions['silence'])))
 
