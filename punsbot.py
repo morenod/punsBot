@@ -180,7 +180,7 @@ def help(message):
 def delete(message):
     global triggers
     global punsdb
-    quote = message.text.replace('/punapprove', '')
+    quote = message.text.replace('/punapprove', '').strip()
     if quote == '':
         bot.reply_to(message, 'Missing uuid to approve or invalid syntax: \"/punapprove \"pun uuid\"')
         return
@@ -206,7 +206,7 @@ def delete(message):
 def delete(message):
     global triggers
     global punsdb
-    quote = message.text.replace('/punban', '')
+    quote = message.text.replace('/punban', '').strip()
     if quote == '':
         bot.reply_to(message, 'Missing uuid to ban or invalid syntax: \"/punban \"pun uuid\"')
         return
@@ -232,7 +232,7 @@ def delete(message):
 def add(message):
     global triggers
     global punsdb
-    quote = message.text.replace('/punadd ', '')
+    quote = message.text.replace('/punadd', '')
     if quote == '' or len(quote.split('|')) != 2:
         bot.reply_to(message, 'Missing pun or invalid syntax: \"/punadd \"pun trigger\"|\"pun\"')
         return
@@ -269,7 +269,7 @@ def add(message):
 def delete(message):
     global triggers
     global punsdb
-    quote = message.text.replace('/pundel ', '')
+    quote = message.text.replace('/pundel', '').strip()
     if quote == '':
         bot.reply_to(message, 'Missing pun uuid to remove or invalid syntax: \"/pundel \"pun uuid\"')
         return
@@ -291,19 +291,22 @@ def delete(message):
 @bot.message_handler(commands=['punsilence'])
 def silence(message):
     global punsdb
-    quote = message.text.replace('/punsilence ', '')
+    quote = message.text.replace('/punsilence', '').strip()
     if quote == '' or not quote.isdigit():
         bot.reply_to(message, 'Missing time to silence or invalid syntax: \"/punsilence "time in minutes"')
         return
+    if int(quote) > 60 or not quote.isdigit():
+        bot.reply_to(message, 'Disabling PunsBot for more than one hour is not funny 😢')
+        return
     chatoptions = load_chat_options(message.chat.id)
-    chatoptions['silence'] = 60 * int(quote) + int(chatoptions['silence']) if chatoptions['silence'] is not None else int(time.time())
+    chatoptions['silence'] = 60 * int(quote) + int((chatoptions['silence']) if chatoptions['silence'] is not None else int(time.time()))
     set_chat_options(chatoptions)
     bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(chatoptions['silence'])))
 
 
 @bot.message_handler(commands=['punset'])
 def silence(message):
-    quote = message.text.replace('/punset ', '')
+    quote = message.text.replace('/punset', '').strip()
     if quote == '' or int(quote) > 100 or int(quote) < 0 or not quote.isdigit():
         bot.reply_to(message, 'Missing probability, out of range or invalid syntax: \"/punset "probability (1-100)"')
         return
