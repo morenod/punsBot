@@ -1,8 +1,10 @@
 FROM gliderlabs/alpine:3.3
 MAINTAINER morenod
 
-RUN apk add --no-cache python python-dev py-pip build-base \
+RUN apk add --no-cache tzdata python python-dev py-pip build-base \
   && pip install PyTelegramBotAPI==3.1.0
+
+TZ=Europe/Madrid
 
 ADD punsbot.py /
 ADD defaultpuns /defaultpuns
