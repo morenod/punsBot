@@ -16,7 +16,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.6.0"
+version = "0.6.1"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -172,7 +172,9 @@ def help(message):
 
     Puns will be enabled if karma is over %s on groups with more than %s people.
     On groups with less people, only positive karma is required
-    ''' % (silence_until(message.chat.id), efectivity(message.chat.id), required_validations, required_validations)
+
+    Version: %s
+    ''' % (silence_until(message.chat.id), efectivity(message.chat.id), required_validations, required_validations, version)
     bot.reply_to(message, helpmessage)
 
 
