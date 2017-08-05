@@ -16,7 +16,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.6.0"
+version = "0.6.1"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -172,7 +172,9 @@ def help(message):
 
     Puns will be enabled if karma is over %s on groups with more than %s people.
     On groups with less people, only positive karma is required
-    ''' % (silence_until(message.chat.id), efectivity(message.chat.id), required_validations, required_validations)
+
+    Version: %s
+    ''' % (silence_until(message.chat.id), efectivity(message.chat.id), required_validations, required_validations, version)
     bot.reply_to(message, helpmessage)
 
 
@@ -299,7 +301,10 @@ def silence(message):
         bot.reply_to(message, 'Disabling PunsBot for more than one hour is not funny 😢')
         return
     chatoptions = load_chat_options(message.chat.id)
-    chatoptions['silence'] = 60 * int(quote) + int((chatoptions['silence']) if chatoptions['silence'] is not None else int(time.time()))
+    if chatoptions['silence'] is None or int(chatoptions['silence']) <= int(time.time()):
+        chatoptions['silence'] = 60 * int(quote) + int(time.time())
+    else:
+        chatoptions['silence'] = 60 * int(quote) + int(chatoptions['silence'])
     set_chat_options(chatoptions)
     bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(chatoptions['silence'])))
 
