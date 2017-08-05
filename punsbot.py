@@ -9,6 +9,7 @@ import re
 import sys
 import random
 import time
+import random
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -66,7 +67,7 @@ def db_setup(dbfile='puns.db'):
     cursor = db.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS puns (uuid text, chatid int, trigger text, pun text)')
     cursor.execute('CREATE TABLE IF NOT EXISTS validations (punid text, chatid int, userid text, karma int)')
-    cursor.execute('CREATE TABLE IF NOT EXISTS chatoptions (chatid int, silence int, unique (chatid))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS chatoptions (chatid int, silence int, efectivity int, unique (chatid))')
     db.commit()
     db.close()
     for db_file in os.listdir('./defaultpuns/punsfiles'):
@@ -77,7 +78,7 @@ def is_chat_silenced(message="", dbfile='puns.db'):
     db = sqlite3.connect(dbfile)
     cursor = db.cursor()
     answer = cursor.execute('''SELECT silence from chatoptions where chatid = ?''', (message.chat.id,)).fetchone()
-    silence = int(answer[0] if answer is not None else 0)
+    silence = int(answer[0] if answer is not None and answer[0] is not None else 0)
     return True if silence > time.time() else False
 
 
@@ -86,8 +87,48 @@ def silence_until(chatid=""):
     db = sqlite3.connect(punsdb)
     cursor = db.cursor()
     answer = cursor.execute('''SELECT silence from chatoptions where chatid = ?''', (chatid,)).fetchone()
-    return str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(answer[0]))) if answer is not None and int(time.time()) < int(answer[0]) else "Never"
+    return str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(answer[0]))) if answer is not None and answer[0] is not None and int(time.time()) < int(answer[0]) else "Never"
 
+
+def load_chat_options(chatid=""):
+    global punsdb
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT chatid,silence,efectivity from chatoptions where chatid = ?''', (chatid,)).fetchone()
+    db.close()
+    chatoptions = {'chatid': chatid,
+                   'silence': answer[1] if answer is not None and answer[1] is not None else None,
+                   'efectivity': answer[2] if answer is not None and answer[2] is not None else None}
+    return chatoptions
+
+
+def set_chat_options(chatoptions=""):
+    global punsdb
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    chatid = chatoptions['chatid'] if chatoptions['chatid'] is not None else None
+    silence = chatoptions['silence'] if chatoptions['silence'] is not None else None
+    efectivity = chatoptions['efectivity'] if chatoptions['efectivity'] is not None else None
+    cursor.execute('''INSERT OR REPLACE INTO chatoptions(chatid,silence,efectivity) VALUES(?,?,?)''', (chatid, silence, efectivity))
+    db.commit()
+    db.close()
+
+
+def is_efective(chatid=""):
+    global punsdb
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    random.randrange(0, 101, 2)
+    answer = cursor.execute('''SELECT efectivity from chatoptions where chatid = ?''', (chatid,)).fetchone()
+    return True if answer is None or int(answer[0]) >= random.randint(0, 100) else False
+
+
+def efectivity(chatid=""):
+    global punsdb
+    db = sqlite3.connect(punsdb)
+    cursor = db.cursor()
+    answer = cursor.execute('''SELECT efectivity from chatoptions where chatid = ?''', (chatid,)).fetchone()
+    return answer[0] if answer is not None else "100"
 
 
 def find_pun(message="", dbfile='puns.db'):
@@ -123,13 +164,15 @@ def help(message):
     /punapprove     Give +1 to a pun
     /punban         Give -1 to a pun
     /punsilence     Stop puns for specified minutes
+    /punset         Set the probability of answering with a pun (1-100)
     /punshelp       This help (/help)
 
     ** PunsBot muted on this channel until %s  **
+    ** Probability of answering with a pun: %s%% **
 
     Puns will be enabled if karma is over %s on groups with more than %s people.
     On groups with less people, only positive karma is required
-    ''' % (silence_until(message.chat.id), required_validations, required_validations)
+    ''' % (silence_until(message.chat.id), efectivity(message.chat.id), required_validations, required_validations)
     bot.reply_to(message, helpmessage)
 
 
@@ -252,13 +295,25 @@ def silence(message):
     if quote == '' or not quote.isdigit():
         bot.reply_to(message, 'Missing time to silence or invalid syntax: \"/punsilence "time in minutes"')
         return
-    db = sqlite3.connect(punsdb)
-    cursor = db.cursor()
-    answer = cursor.execute('''SELECT silence from chatoptions WHERE (chatid = ?)''', (message.chat.id,)).fetchone()
-    silence = 60 * int(quote) + int(answer[0] if answer is not None else time.time())
-    cursor.execute('''INSERT OR REPLACE INTO chatoptions(chatid,silence) VALUES(?,?)''', (message.chat.id, silence))
-    db.commit()
-    bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(silence)))
+    chatoptions = load_chat_options(message.chat.id)
+    chatoptions['silence'] = 60 * int(quote) + int(chatoptions['silence']) if chatoptions['silence'] is not None else int(time.time())
+    set_chat_options(chatoptions)
+    bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(chatoptions['silence'])))
+
+
+@bot.message_handler(commands=['punset'])
+def silence(message):
+    quote = message.text.replace('/punset ', '')
+    if quote == '' or int(quote) > 100 or int(quote) < 0 or not quote.isdigit():
+        bot.reply_to(message, 'Missing probability, out of range or invalid syntax: \"/punset "probability (1-100)"')
+        return
+    elif quote == '0':
+        bot.reply_to(message, 'Probability cannot be 0, to disable punsbot during a period of time, use /punsilence"')
+        return
+    chatoptions = load_chat_options(message.chat.id)
+    chatoptions['efectivity'] = int(quote)
+    set_chat_options(chatoptions)
+    bot.reply_to(message, 'PunsBot will detect puns ' + quote + '% of the times')
 
 
 @bot.message_handler(commands=['list', 'punlist', 'punslist'])
@@ -308,7 +363,7 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda m: True)
 def echo_all(message):
-    if not is_chat_silenced(message=message, dbfile=punsdb):
+    if not is_chat_silenced(message=message, dbfile=punsdb) and is_efective(message.chat.id):
         rima = find_pun(message=message, dbfile=punsdb)
         if rima is not None:
             bot.reply_to(message, rima)
