@@ -120,7 +120,7 @@ def is_efective(chatid=""):
     cursor = db.cursor()
     random.randrange(0, 101, 2)
     answer = cursor.execute('''SELECT efectivity from chatoptions where chatid = ?''', (chatid,)).fetchone()
-    return True if answer is None or int(answer[0]) >= random.randint(0, 100) else False
+    return True if answer is None or answer[0] is None or int(answer[0]) >= random.randint(0, 100) else False
 
 
 def efectivity(chatid=""):
