@@ -16,7 +16,7 @@ sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.6.1"
+version = "0.6.2"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -298,13 +298,17 @@ def silence(message):
         bot.reply_to(message, 'Missing time to silence or invalid syntax: \"/punsilence "time in minutes"')
         return
     if int(quote) > 60 or not quote.isdigit():
-        bot.reply_to(message, 'Disabling PunsBot for more than one hour is not funny 😢')
+        bot.reply_to(message, 'Disabling PunsBot for more than an hour is not funny 😢')
         return
     chatoptions = load_chat_options(message.chat.id)
     if chatoptions['silence'] is None or int(chatoptions['silence']) <= int(time.time()):
         chatoptions['silence'] = 60 * int(quote) + int(time.time())
     else:
-        chatoptions['silence'] = 60 * int(quote) + int(chatoptions['silence'])
+        if int(chatoptions['silence']) + 60 * int(quote) - int(time.time()) >= 3600:
+            bot.reply_to(message, 'Disabling PunsBot for more than an hour is not funny 😢')
+            return
+        else:
+            chatoptions['silence'] = 60 * int(quote) + int(chatoptions['silence'])
     set_chat_options(chatoptions)
     bot.reply_to(message, 'PunsBot will be muted until ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(chatoptions['silence'])))
 
