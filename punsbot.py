@@ -9,14 +9,13 @@ import re
 import sys
 import random
 import time
-import random
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
 allowed_chars_puns = string.ascii_letters + " " + string.digits + "áéíóúàèìòùäëïöü"
 allowed_chars_triggers = allowed_chars_puns + "^$.*+?(){}\\[]<>=-"
-version = "0.6.2"
+version = "0.6.3"
 required_validations = 5
 
 if 'TOKEN' not in os.environ:
@@ -179,7 +178,7 @@ def help(message):
 
 
 @bot.message_handler(commands=['punapprove'])
-def delete(message):
+def approve(message):
     global triggers
     global punsdb
     quote = message.text.replace('/punapprove', '').strip()
@@ -205,7 +204,7 @@ def delete(message):
 
 
 @bot.message_handler(commands=['punban'])
-def delete(message):
+def ban(message):
     global triggers
     global punsdb
     quote = message.text.replace('/punban', '').strip()
@@ -314,7 +313,7 @@ def silence(message):
 
 
 @bot.message_handler(commands=['punset'])
-def silence(message):
+def set(message):
     quote = message.text.replace('/punset', '').strip()
     if quote == '' or int(quote) > 100 or int(quote) < 0 or not quote.isdigit():
         bot.reply_to(message, 'Missing probability, out of range or invalid syntax: \"/punset "probability (1-100)"')
