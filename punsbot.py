@@ -27,7 +27,7 @@ if 'DBLOCATION' not in os.environ:
     os._exit(1)
 
 bot = telebot.TeleBot(os.environ['TOKEN'])
-
+bot.skip_pending = True
 
 def is_valid_regex(regexp=""):
     try:
