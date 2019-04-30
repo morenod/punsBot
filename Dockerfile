@@ -1,4 +1,4 @@
-FROM gliderlabs/alpine:3.3
+FROM alpine:latest
 MAINTAINER morenod
 
 RUN apk add --no-cache sqlite tzdata python python-dev py-pip build-base \
