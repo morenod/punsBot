@@ -2,7 +2,7 @@ FROM alpine:latest
 MAINTAINER morenod
 
 RUN apk add --no-cache sqlite tzdata python python-dev py-pip build-base \
-  && pip install PyTelegramBotAPI==3.1.0
+  && pip install PyTelegramBotAPI
 
 ENV TZ="Europe/Madrid"
 
